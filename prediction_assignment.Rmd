@@ -1,0 +1,148 @@
+---
+title: "Prediction Assignment"
+author: "Shraddha"
+date: "June 10, 2016"
+output: 
+  html_document: 
+    keep_md: yes
+---
+Loading required libraries
+```{r }
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(e1071)
+set.seed(1)
+```
+
+##Loading and Cleaning the data
+Loading the data by deleting the columns with missing values and irrelevant values
+
+```{r}
+training<-read.csv("F:/pml-training.csv",header=TRUE,na.strings=c("NA","#DIV/0!",""))
+testing<-read.csv("F:/pml-testing.csv",header=TRUE,na.strings=c("NA","#DIV/0!",""))
+dim(training)
+dim(testing)
+
+```
+
+Now we check the number of variables and observations and then deleting the columns with missing values
+
+```{r}
+trainingData<- training[,colSums(is.na(training))==0]
+testingData<- testing[,colSums(is.na(testing))==0]
+```
+
+ #Now removing irrelevant variables - user_name,raw_timestamp_part_1,raw_timestamp_part_2,cvtd_timestamp,new_window,num_window i.e. columns 1 to 7 and again checking the number of variables and observations in teh new data set
+
+```{r}
+
+trainingData<- trainingData[,-c(1:7)]
+testingData<- testingData[,c(1:7)]
+
+dim(trainingData)
+dim(testingData)
+
+```
+
+##Partitioning the Training Dataset
+Since there are 19622 observations in training set, partition the training dataset into sets trainingNew (70%) and testingNew(30%)
+
+```{r}
+inTrain<- createDataPartition(y=trainingData$classe,p=0.7,list=FALSE)
+trainingNew<- trainingData[inTrain,]
+testingNew<- trainingData[-inTrain,]
+dim(trainingNew)
+dim(testingNew)
+
+```
+
+Two methods - Decision Tree and Random Forest will be applied to the the training data set and the best model with high accuracy will be applied to the test data set.
+
+##Decision Tree - First prediction model
+```{r}
+
+Fit1<- rpart(classe~.,data=trainingNew,method="class")
+
+```
+
+Predicting Model 1
+```{r}
+
+prediction1<- predict(Fit1, testingNew, type="class")
+
+```
+
+Plotting the Decision tree
+
+```{r}
+
+fancyRpartPlot(Fit1,cex=0.4,under.cex=1,shadow.offset=0)
+
+```
+
+Testing results on testingNew data set
+
+```{r}
+library(e1071)
+confusionMatrix(prediction1, testingNew$classe)
+
+```
+
+##Random Forest - Second Prediction Model
+
+```{r}
+Fit2<- randomForest(classe~., data=trainingNew,method="class")
+
+```
+
+Predicting Model 2
+```{r}
+prediction2<- predict(Fit2, testingNew, type="class")
+
+```
+Testing results on testingNew data set
+
+```{r}
+confusionMatrix(prediction2, testingNew$classe)
+
+```
+##Conclusion:
+Random Forest will be choosen as it has the higher accuracy 0.996, as compared to Decision Tree Model, 
+which has an accuracy of 0.744.
+The expected out-of-sample error will be calculated by 1-accuracy for predictions made against the cross-validation set.
+Hence, the error rate on applying Random Forest algorithm will be 0.4%
+
+Since the testing data set has only 20 cases, very few of the test samples will be missclassified.
+
+
+Applying Random Forest algorithm to the origial Testing data set
+
+```{r}
+FinalPrediction<- predict(Fit2,testing,type="class")
+FinalPrediction
+
+
+```
+
+##Creating Submission files
+
+```{r}
+pmlWriteFiles<- function(x)
+{
+n=length(x)
+for(i in 1:n)
+{
+filename=paste0("E:/",i,".txt")
+write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+}
+}
+pmlWriteFiles(FinalPrediction)
+
+
+
+```
+
+
